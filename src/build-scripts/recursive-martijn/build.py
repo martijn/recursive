@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """
 Build "Recursive Martijn": a 4-style code family instanced from the Recursive VF,
-modelled on Rec Mono Duotone (frozen code stylistic sets, code ligatures in calt,
-reduced-slant italics, RIBBI naming).
+modelled on Rec Mono Duotone (frozen code stylistic sets, reduced-slant italics,
+RIBBI naming). Unlike Rec Mono, code ligatures stay in dlig, so they are off by
+default in editors.
 
 Note: this is a proportional font specced for programming. With MONO at 0.35
 the glyphs have varying advance widths (post.isFixedPitch is 0), so it will
@@ -45,24 +46,6 @@ STYLES = {
 
 # Same frozen features as Rec Mono for Code
 FREEZE = "ss03,ss05,ss08,ss09,ss12"
-
-
-def dlig_to_calt(font):
-    """Rename dlig -> calt so code ligatures are on by default, keep FeatureList sorted."""
-    gsub = font["GSUB"].table
-    records = gsub.FeatureList.FeatureRecord
-    for r in records:
-        if r.FeatureTag == "dlig":
-            r.FeatureTag = "calt"
-    order = sorted(range(len(records)), key=lambda i: records[i].FeatureTag)
-    remap = {old: new for new, old in enumerate(order)}
-    gsub.FeatureList.FeatureRecord = [records[i] for i in order]
-    for sr in gsub.ScriptList.ScriptRecord:
-        langsyses = [sr.Script.DefaultLangSys] + [l.LangSys for l in sr.Script.LangSysRecord]
-        for ls in filter(None, langsyses):
-            ls.FeatureIndex = sorted(remap[i] for i in ls.FeatureIndex)
-            if ls.ReqFeatureIndex != 0xFFFF:
-                ls.ReqFeatureIndex = remap[ls.ReqFeatureIndex]
 
 
 def set_names(font, style, bold, italic):
@@ -121,7 +104,6 @@ def main():
         tmp.unlink()
 
         font = TTFont(final)
-        dlig_to_calt(font)
         set_names(font, style, bold, italic)
         widths = {w for w, _ in font["hmtx"].metrics.values() if w}
         font["post"].isFixedPitch = 1 if len(widths) == 1 else 0
